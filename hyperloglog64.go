@@ -53,6 +53,15 @@ func (h *HyperLogLog64) AddUint64(x uint64) {
 	}
 }
 
+// SeenUint64 checks whether an uint64 has been seen already (probabilistically).
+func (h *HyperLogLog64) SeenUint64(x uint64) bool {
+	i := eb64(x, 64, 64-h.p) // {x63,...,x64-p}
+	w := x<<h.p | 1<<(h.p-1) // {x63-p,...,x0}
+
+	zeroBits := clz64(w) + 1
+	return zeroBits <= h.reg[i]
+}
+
 // Merge takes another HyperLogLog64 and combines it with HyperLogLog64 h.
 func (h *HyperLogLog64) Merge(other *HyperLogLog64) error {
 	if h.p != other.p {
