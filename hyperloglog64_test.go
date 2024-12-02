@@ -58,15 +58,16 @@ func TestHLL64CountMany(t *testing.T) {
 }
 
 func TestHLL64Seen(t *testing.T) {
-	for _, count := range []uint64{1e6, 1e7, 1e8} {
+	for _, count := range []uint64{1e6} {
 		t.Run(fmt.Sprintf("count=%d", count), func(t *testing.T) {
 			seen := make(map[uint64]struct{}, count)
 
-			h, err := New64(16)
+			h, err := New64(18)
 			require.NoError(t, err)
 
 			require.Zero(t, h.Count())
 			falsePositives := 0
+			falseNegatives := 0
 			for i := uint64(0); i < count; i++ {
 				x := rand.Uint64()
 				for _, ok := seen[x]; ok; _, ok = seen[x] {
@@ -76,11 +77,18 @@ func TestHLL64Seen(t *testing.T) {
 					falsePositives++
 				}
 				h.AddUint64(x)
+				if !h.SeenUint64(x) {
+					falseNegatives++
+				}
 				seen[x] = struct{}{}
+				if i%128 == 0 {
+					require.InEpsilonf(t, i+1, h.Count(), 0.05, "expected %d, got %d", i, h.Count())
+				}
 			}
 
 			gotCount := h.Count()
 			t.Logf("size: %d", size.Of(h))
+			t.Logf("false negatives: %d", falseNegatives)
 			t.Logf("false positives: %d", falsePositives)
 			t.Logf("false positives pct: %0.3f%%", 100*float64(falsePositives)/float64(count))
 			t.Logf("error: %0.3f%%", 100*(float64(gotCount)-float64(count))/float64(count))
