@@ -30,6 +30,24 @@ func TestHLL64Count(t *testing.T) {
 	}
 }
 
+func BenchmarkHLL64_Count(b *testing.B) {
+	for _, precision := range []uint8{14, 15, 16, 17, 18} {
+		b.Run(fmt.Sprintf("precision=%d", precision), func(b *testing.B) {
+			h, err := New64(precision)
+			require.NoError(b, err)
+			for i := 0; i < 1e6; i++ {
+				h.AddUint64(rand.Uint64())
+			}
+			b.ResetTimer()
+			c := uint64(0)
+			for i := 0; i < b.N; i++ {
+				c += h.Count()
+			}
+			require.NotZero(b, c)
+		})
+	}
+}
+
 func TestHLL64CountMany(t *testing.T) {
 	for _, count := range []uint64{1e6, 1e7, 1e8, 5e8} {
 		t.Run(fmt.Sprintf("count=%d", count), func(t *testing.T) {

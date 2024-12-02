@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"fmt"
 )
 
 type HyperLogLog64 struct {
@@ -25,8 +26,9 @@ type HyperLogLog64 struct {
 
 // New64 returns a new initialized HyperLogLog64.
 func New64(precision uint8) (*HyperLogLog64, error) {
-	if precision > 26 || precision < 4 {
-		return nil, errors.New("precision must be between 4 and 26")
+	maxPrecision := len(rawEstimateData) + minPrecision - 1
+	if precision > uint8(maxPrecision) || precision < 4 {
+		return nil, fmt.Errorf("precision must be between %d and %d", minPrecision, maxPrecision)
 	}
 
 	h := &HyperLogLog64{}
