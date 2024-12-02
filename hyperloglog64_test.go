@@ -31,7 +31,7 @@ func TestHLL64Count(t *testing.T) {
 }
 
 func TestHLL64CountMany(t *testing.T) {
-	for _, count := range []uint64{1e6, 1e7, 1e8} {
+	for _, count := range []uint64{1e6, 1e7, 1e8, 5e8} {
 		t.Run(fmt.Sprintf("count=%d", count), func(t *testing.T) {
 			seen := make(map[uint64]struct{}, count)
 

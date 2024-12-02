@@ -15,7 +15,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
-	"math"
 )
 
 type HyperLogLog64 struct {
@@ -79,15 +78,41 @@ func (h *HyperLogLog64) Merge(other *HyperLogLog64) error {
 // Count returns the cardinality estimate.
 func (h *HyperLogLog64) Count() uint64 {
 	est := calculateEstimate(h.reg)
-	if est <= float64(h.m)*2.5 {
-		if v := countZeros(h.reg); v != 0 {
-			return uint64(linearCounting(h.m, v))
-		}
-		return uint64(est)
-	} else if est < two32/30 {
-		return uint64(est)
+	if est <= float64(h.m)*5.0 {
+		est -= h.estimateBias(est)
 	}
-	return uint64(-two32 * math.Log(1-est/two32))
+
+	if v := countZeros(h.reg); v != 0 {
+		lc := linearCounting(h.m, v)
+		if lc <= float64(threshold[h.p-4]) {
+			return uint64(lc)
+		}
+	}
+	return uint64(est)
+}
+
+// Estimates the bias using empirically determined values.
+func (h *HyperLogLog64) estimateBias(est float64) float64 {
+	estTable, biasTable := rawEstimateData[h.p-4], biasData[h.p-4]
+
+	if estTable[0] > est {
+		return biasTable[0]
+	}
+
+	lastEstimate := estTable[len(estTable)-1]
+	if lastEstimate < est {
+		return biasTable[len(biasTable)-1]
+	}
+
+	var i int
+	for i = 0; i < len(estTable) && estTable[i] < est; i++ {
+	}
+
+	e1, b1 := estTable[i-1], biasTable[i-1]
+	e2, b2 := estTable[i], biasTable[i]
+
+	c := (est - e1) / (e2 - e1)
+	return b1*(1-c) + b2*c
 }
 
 // GobEncode encodes HyperLogLog64 into a gob.
